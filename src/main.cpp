@@ -45,7 +45,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 	cv::cvtColor(dst, cdst, CV_GRAY2BGR);
 
 	
-	cv::vector<cv::Vec4i> lines;
+	std::vector<cv::Vec4i> lines;
 	cv::HoughLinesP(dst, lines, 1, CV_PI/180, 80, 50, 10 );
 	for( size_t i = 0; i < lines.size(); i++ )
 	{
@@ -122,7 +122,7 @@ int main(int argc, char **argv)
     * subscribe() returns an image_transport::Subscriber object, that you must hold on to until you want to unsubscribe. 
     * When the Subscriber object is destructed, it will automatically unsubscribe from the "camera/image_raw" base topic.
     */
-        image_transport::Subscriber sub = it.subscribe("usb_cam/image_raw", 1, imageCallback);
+        image_transport::Subscriber sub = it.subscribe("camera/image/compressed", 1, imageCallback);
     //OpenCV HighGUI call to destroy a display window on shut-down.
     cv::destroyWindow(WINDOW);
     /**
@@ -142,7 +142,7 @@ int main(int argc, char **argv)
     * than we can send them, the number here specifies how many messages to
     * buffer up before throwing some away.
     */
-        pub = it.advertise("usb_cam/image_processed", 1);
+        //pub = it.advertise("usb_cam/image_processed", 1);
     /**
     * In this application all user callbacks will be called from within the ros::spin() call. 
     * ros::spin() will not return until the node has been shutdown, either through a call 

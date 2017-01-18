@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(stitcher)
+project(ROS-linerider)
  
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
@@ -9,7 +9,6 @@ find_package(catkin REQUIRED COMPONENTS
   image_transport
   roscpp
   std_msgs
-  usb_cam
 )
  
 find_package(OpenCV REQUIRED)
