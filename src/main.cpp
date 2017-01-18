@@ -10,83 +10,74 @@
 #include <opencv2/imgproc/imgproc.hpp>
 //Include headers for OpenCV GUI handling
 #include <opencv2/highgui/highgui.hpp>
+
+#include <geometry_msgs/Twist.h>
   
 //Store all constants for image encodings in the enc namespace to be used later.
 namespace enc = sensor_msgs::image_encodings;
   
 //Declare a string with the name of the window that we will create using OpenCV where processed images will be displayed.
 static const char WINDOW[] = "Image Processed";
-  
-//Use method of ImageTransport to create image publisher
-image_transport::Publisher pub;
+
+ros::Publisher pub;
   
 //This function is called everytime a new image is published
 void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 {
-    //Convert from the ROS image message to a CvImage suitable for working with OpenCV for processing
-    cv_bridge::CvImagePtr cv_ptr;
-    try
-    {
-        //Always copy, returning a mutable CvImage
-        //OpenCV expects color images to use BGR channel order.
-        cv_ptr = cv_bridge::toCvCopy(original_image, enc::BGR8);
-    }
-    catch (cv_bridge::Exception& e)
-    {
-        //if there is an error during conversion, display it
-        ROS_ERROR("tutorialROSOpenCV::main.cpp::cv_bridge exception: %s", e.what());
-        return;
-    }
+	//Convert from the ROS image message to a CvImage suitable for working with OpenCV for processing
+	cv_bridge::CvImagePtr cv_ptr;
+	try
+	{
+		//Always copy, returning a mutable CvImage
+		//OpenCV expects color images to use BGR channel order.
+		cv_ptr = cv_bridge::toCvCopy(original_image, enc::BGR8);
+	}
+	catch (cv_bridge::Exception& e)
+	{
+		//if there is an error during conversion, display it
+		ROS_ERROR("tutorialROSOpenCV::main.cpp::cv_bridge exception: %s", e.what());
+		return;
+	}
 
-    // The code below is from: http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
+	// Rotate 90 deg CCW
+	cv::transpose(cv_ptr->image, cv_ptr->image);  
+    	cv::flip(cv_ptr->image, cv_ptr->image, 0);
 
-    cv::Mat dst, cdst;
+	int width = cv_ptr->image.size().width;
+	int height = cv_ptr->image.size().height;
+
+	// The code below is from: http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
+	cv::Mat dst, cdst;
 	cv::Canny(cv_ptr->image, dst, 50, 200, 3);
 	cv::cvtColor(dst, cdst, CV_GRAY2BGR);
 
 	
 	std::vector<cv::Vec4i> lines;
-	cv::HoughLinesP(dst, lines, 1, CV_PI/180, 80, 50, 10 );
+	cv::HoughLinesP(dst, lines, 1, CV_PI/180, 20, 20, 5 );
+	long int sum = 0;
+	float avg;
 	for( size_t i = 0; i < lines.size(); i++ )
 	{
-	cv::Vec4i l = lines[i];
-	line( cdst, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,0,255), 3, CV_AA);
-	printf("[%d,%d] [%d,%d]\n", l[0], l[1], l[2], l[3]);
+		cv::Vec4i l = lines[i];
+		line( cdst, cv::Point(l[0], l[1]), cv::Point(l[2], l[3]), cv::Scalar(0,0,255), 3, CV_AA);
+		sum += ((l[0] + l[2]) - width) / 2;
+	}
+	if (lines.size() > 0) {
+		avg = (sum / (float)lines.size()) / (float)(width / 2);
+		//ROS_INFO("angle = %f\n", avg);
+		geometry_msgs::Twist msg;
+		msg.linear.x = 1.0;
+		msg.angular.x = avg;
+		pub.publish(msg);
 	}
 	
 	cv::imshow("source", cv_ptr->image);
-	cv::imshow("detected lines", cdst);
-
-  
-    //Invert Image
-    //Go through all the rows
-    // for(int i=0; i<cv_ptr->image.rows; i++)
-    // {
-    //     //Go through all the columns
-    //     for(int j=0; j<cv_ptr->image.cols; j++)
-    //     {
-    //         //Go through all the channels (b, g, r)
-    //         for(int k=0; k<cv_ptr->image.channels(); k++)
-    //         {
-    //             //Invert the image by subtracting image data from 255               
-    //             cv_ptr->image.data[i*cv_ptr->image.rows*4+j*3 + k] = 255-cv_ptr->image.data[i*cv_ptr->image.rows*4+j*3 + k];
-    //         }
-    //     }
-    // }
-      
+	cv::imshow("detected lines", cdst);      
   
     //Display the image using OpenCV
     //cv::imshow(WINDOW, cv_ptr->image);
     //Add some delay in miliseconds. The function only works if there is at least one HighGUI window created and the window is active. If there are several HighGUI windows, any of them can be active.
-    cv::waitKey(3);
-    /**
-    * The publish() function is how you send messages. The parameter
-    * is the message object. The type of this object must agree with the type
-    * given as a template parameter to the advertise<>() call, as was done
-    * in the constructor in main().
-    */
-    //Convert the CvImage to a ROS image message and publish it on the "camera/image_processed" topic.
-        //pub.publish(cv_ptr->toImageMsg());
+	cv::waitKey(3);
 }
   
 /**
@@ -104,55 +95,31 @@ int main(int argc, char **argv)
     * You must call one of the versions of ros::init() before using any other
     * part of the ROS system.
     */
-        ros::init(argc, argv, "image_processor");
-    /**
-    * NodeHandle is the main access point to communications with the ROS system.
-    * The first NodeHandle constructed will fully initialize this node, and the last
-    * NodeHandle destructed will close down the node.
-    */
-        ros::NodeHandle nh;
+	ros::init(argc, argv, "image_processor");
+
+	ros::NodeHandle nh;
+
+	pub = nh.advertise<geometry_msgs::Twist>("cmd_vel", 1000);
+
     //Create an ImageTransport instance, initializing it with our NodeHandle.
-        image_transport::ImageTransport it(nh);
+	image_transport::ImageTransport it(nh);
     //OpenCV HighGUI call to create a display window on start-up.
-    cv::namedWindow(WINDOW, CV_WINDOW_AUTOSIZE);
-    /**
-    * Subscribe to the "camera/image_raw" base topic. The actual ROS topic subscribed to depends on which transport is used. 
-    * In the default case, "raw" transport, the topic is in fact "camera/image_raw" with type sensor_msgs/Image. ROS will call 
-    * the "imageCallback" function whenever a new image arrives. The 2nd argument is the queue size.
-    * subscribe() returns an image_transport::Subscriber object, that you must hold on to until you want to unsubscribe. 
-    * When the Subscriber object is destructed, it will automatically unsubscribe from the "camera/image_raw" base topic.
-    */
-    image_transport::TransportHints hints("compressed", ros::TransportHints());
-    image_transport::Subscriber sub = it.subscribe("camera/image", 1, imageCallback, hints);
+	cv::namedWindow(WINDOW, CV_WINDOW_AUTOSIZE);
+
+	image_transport::TransportHints hints("compressed", ros::TransportHints());
+	image_transport::Subscriber sub = it.subscribe("camera/image", 1, imageCallback, hints);
     
 
 //OpenCV HighGUI call to destroy a display window on shut-down.
-    cv::destroyWindow(WINDOW);
-    /**
-    * The advertise() function is how you tell ROS that you want to
-    * publish on a given topic name. This invokes a call to the ROS
-    * master node, which keeps a registry of who is publishing and who
-    * is subscribing. After this advertise() call is made, the master
-    * node will notify anyone who is trying to subscribe to this topic name,
-    * and they will in turn negotiate a peer-to-peer connection with this
-    * node.  advertise() returns a Publisher object which allows you to
-    * publish messages on that topic through a call to publish().  Once
-    * all copies of the returned Publisher object are destroyed, the topic
-    * will be automatically unadvertised.
-    *
-    * The second parameter to advertise() is the size of the message queue
-    * used for publishing messages.  If messages are published more quickly
-    * than we can send them, the number here specifies how many messages to
-    * buffer up before throwing some away.
-    */
-        //pub = it.advertise("usb_cam/image_processed", 1);
+	cv::destroyWindow(WINDOW);
+
     /**
     * In this application all user callbacks will be called from within the ros::spin() call. 
     * ros::spin() will not return until the node has been shutdown, either through a call 
     * to ros::shutdown() or a Ctrl-C.
     */
-        ros::spin();
+	ros::spin();
     //ROS_INFO is the replacement for printf/cout.
-    ROS_INFO("tutorialROSOpenCV::main.cpp::No error.");
+	ROS_INFO("tutorialROSOpenCV::main.cpp::No error.");
   
 }
