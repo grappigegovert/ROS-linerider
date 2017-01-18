@@ -122,8 +122,11 @@ int main(int argc, char **argv)
     * subscribe() returns an image_transport::Subscriber object, that you must hold on to until you want to unsubscribe. 
     * When the Subscriber object is destructed, it will automatically unsubscribe from the "camera/image_raw" base topic.
     */
-        image_transport::Subscriber sub = it.subscribe("camera/image/compressed", 1, imageCallback);
-    //OpenCV HighGUI call to destroy a display window on shut-down.
+    image_transport::TransportHints hints("compressed", ros::TransportHints());
+    image_transport::Subscriber sub = it.subscribe("camera/image", 1, imageCallback, hints);
+    
+
+//OpenCV HighGUI call to destroy a display window on shut-down.
     cv::destroyWindow(WINDOW);
     /**
     * The advertise() function is how you tell ROS that you want to
