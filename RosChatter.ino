@@ -16,6 +16,7 @@ ros::Publisher debug("debug", &str_msg);
 char msg[30];
 int messagedelay = 0;
 
+
 float ultrasonic(void) {
   digitalWrite(23, LOW);
   delayMicroseconds(2);
@@ -23,17 +24,17 @@ float ultrasonic(void) {
   delayMicroseconds(10);
   digitalWrite(23, LOW);
 
-  duration = pulseIn(22,HIGH,1740);   // 1740 uS => 30 cm
-  distacne_cm = duration / 58;
+  long duration = pulseIn(22,HIGH,1740);   // 1740 uS => 30 cm
+  long distance_cm = duration / 58;
 
-  if (distacne_cm > 0 && distacne_cm < 15) {
-    return 0;
+  if (distance_cm > 0 && distance_cm < 15) {
+    return 0.0;
   }
-  else if (distacne_cm < 30) {
-    return (distacne_cm-15)/15;
+  else if (distance_cm > 0 && distance_cm < 30) {
+    return (float) (distance_cm-15)/15.0;
   } 
   else {
-    return 1;
+    return 1.0;
   }
 }
 
@@ -46,35 +47,44 @@ void twistMsg(const geometry_msgs::Twist& twist_msg) {
   int rot = (int)(twist_msg.angular.z * 255.0);
   lspd -= rot;
   rspd += rot;
+  
+  //sprintf(msg, "lspd = %d", lspd);
+  //str_msg.data = msg;
+  //debug.publish(&str_msg);
 
-  dist_factor = (int) ultrasonic();
+  float dist_factor = ultrasonic();
+  
+  lspd = (int) lspd * dist_factor;
+  rspd = (int) rspd * dist_factor;
+  
+  
   
   if (rspd > 255)
-    rspd = dist_factor * 255;
+    rspd = 255;
   if (rspd < -255)
-    rspd = dist_factor * -255;
+    rspd = -255;
   if (lspd > 255)
-    lspd = dist_factor * 255;
+    lspd = 255;
   if (lspd < -255)
-    lspd = dist_factor * -255;
+    lspd = -255;
   
-  sprintf(msg, "l=%d, r=%d", lspd, rspd);
-  str_msg.data = msg;
-  debug.publish(&str_msg);
+  //sprintf(msg, "factor = %d", dist_factor);
+  //str_msg.data = msg;
+  //debug.publish(&str_msg);
   
   if (lspd < 0) {
-    analogWrite(6, 0);
-    analogWrite(7, -lspd);
-  } else {
     analogWrite(7, 0);
-    analogWrite(6, lspd);
+    analogWrite(6, -lspd);
+  } else {
+    analogWrite(6, 0);
+    analogWrite(7, lspd);
   }
   if (rspd < 0) {
-    analogWrite(2, 0);
-    analogWrite(3, -rspd);
-  } else {
     analogWrite(3, 0);
-    analogWrite(2, rspd);
+    analogWrite(2, -rspd);
+  } else {
+    analogWrite(2, 0);
+    analogWrite(3, rspd);
   }
 }
 
