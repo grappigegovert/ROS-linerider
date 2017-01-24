@@ -31,7 +31,7 @@ float ultrasonic(void) {
     return 0.0;
   }
   else if (distance_cm > 0 && distance_cm < 30) {
-    return (float) (distance_cm-15)/15.0;
+    return 0.5//(float) (distance_cm-15)/15.0;
   } 
   else {
     return 1.0;
