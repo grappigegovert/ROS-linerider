@@ -20,6 +20,37 @@ namespace enc = sensor_msgs::image_encodings;
 static const char WINDOW[] = "Image Processed";
 
 ros::Publisher pub;
+
+void deletetopblob(cv::Mat *src, cv::Mat *dest) {
+	uchar *p, *q;
+	for(int i=0; i < src->rows; i++) {
+		p = src->ptr<uchar>(i);
+		q = dest->ptr<uchar>(i);
+		if (p[0] && p[src->cols-1]) {
+			break; // stop at first non-black line
+		}
+		for(int j=0; j < src->cols; j++) {	// left to right
+			if (!p[j]) {
+				for (int k=0; k < dest->channels(); k++) {
+					//ROS_INFO("%d\n", p[j+k]);
+					q[j+k] = 255;
+				}
+			} else {
+				break; // stop at first non-black pixel in column
+			}
+		}
+		for(int j = src->cols-1; j>=0; j--) {   // right to left (shameless code-duplication)
+			if (!p[j]) {
+				for (int k=0; k < dest->channels(); k++) {
+					//ROS_INFO("%d\n", p[j+k]);
+					q[j+k] = 255;
+				}
+			} else {
+				break;  // stop at first non-black pixel in column
+			}
+		}
+	}
+}
   
 //This function is called everytime a new image is published
 void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
@@ -47,8 +78,13 @@ void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 	int height = cv_ptr->image.size().height;
 
 	// The code below is from: http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
-	cv::Mat dst, cdst;
-	cv::Canny(cv_ptr->image, dst, 50, 200, 3);
+	cv::Mat dst, cdst, wew, gray;
+
+	cv::cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
+	cv::threshold(gray, wew, 0, 255, cv::THRESH_BINARY + cv::THRESH_OTSU);
+	deletetopblob(&wew, &gray);
+	
+	cv::Canny(gray, dst, 50, 200, 3);
 	cv::cvtColor(dst, cdst, CV_GRAY2BGR);
 
 	
@@ -66,13 +102,15 @@ void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 		avg = (sum / (float)lines.size()) / (float)(width / 2);
 		//ROS_INFO("angle = %f\n", avg);
 		geometry_msgs::Twist msg;
-		msg.linear.x = 1.0;
-		msg.angular.x = avg;
+		msg.linear.x = 0.6;
+		msg.angular.z = avg * 0.5;
 		pub.publish(msg);
 	}
 	
 	cv::imshow("source", cv_ptr->image);
-	cv::imshow("detected lines", cdst);      
+	cv::imshow("detected lines", cdst);
+	cv::imshow("wew", wew);
+	cv::imshow("gray", gray);
   
     //Display the image using OpenCV
     //cv::imshow(WINDOW, cv_ptr->image);
