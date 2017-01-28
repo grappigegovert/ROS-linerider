@@ -1,6 +1,9 @@
-/*
- * rosserial Publisher Example
- * Prints "hello world!"
+/**
+ * Group number: 24
+ * Student 1: 
+ * Govert de Gans,   4491955
+ * Student 2:
+ * Patrick Schilder, 4616634
  */
 
 #include <ros.h>
@@ -18,20 +21,29 @@ int messagedelay = 0;
 
 
 float ultrasonic(void) {
+  /* This function is called every time a Twist message is received.
+     It then checks the distance and determines how the speed from the
+     twist message should be changed. It return a value betwwen 0 and 1 */
+     
   digitalWrite(23, LOW);
   delayMicroseconds(2);
   digitalWrite(23, HIGH);
   delayMicroseconds(10);
   digitalWrite(23, LOW);
 
-  long duration = pulseIn(22,HIGH,1740);   // 1740 uS => 30 cm
+
+  /* Duration in uS determines the distances that can be detected.
+     First 1740 uS (~ 30 cm) was used, but later we decided to
+     decrease latency and use 870 uS (~ 15 cm) */
+
+  long duration = pulseIn(22,HIGH,870);
   long distance_cm = duration / 58;
 
   if (distance_cm > 0 && distance_cm < 15) {
     return 0.0;
   }
-  else if (distance_cm > 0 && distance_cm < 30) {
-    return 0.5//(float) (distance_cm-15)/15.0;
+  else if (distance_cm > 0 && distance_cm < 30) {  
+    return 0.5;//(float) (distance_cm-15)/15.0;    // this isn't used anymore after changing the time in PulseIn
   } 
   else {
     return 1.0;
@@ -125,6 +137,8 @@ void loop()
 {
   nh.spinOnce();
   delay(1);
+  
+  // Stop if no messages are received for more the 2 seconds.
   if (messagedelay > 2000) {
     fail();
   } else {

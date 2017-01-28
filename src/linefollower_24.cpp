@@ -1,3 +1,21 @@
+/**
+ * Group number: 24
+ * Student 1: 
+ * Govert de Gans,   4491955
+ * Student 2:
+ * Patrick Schilder, 4616634
+ */
+
+/**
+The next web sites were consulted during making of this line detection code:
+
+- Using openCV for displaying and editing images:
+	https://rosstitchernode.wordpress.com/2014/06/05/ros-and-opencv-with-usb_cam/
+- Detecting lines inside an image:
+	http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
+*/
+
+
 //Includes all the headers necessary to use the most common public pieces of the ROS system.
 #include <ros/ros.h>
 //Use image_transport for publishing and subscribing to images in ROS
@@ -51,7 +69,9 @@ void deletetopblob(cv::Mat *src, cv::Mat *dest) {
 		}
 	}
 }
-  
+
+
+
 //This function is called everytime a new image is published
 void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 {
@@ -77,7 +97,7 @@ void imageCallback(const sensor_msgs::ImageConstPtr& original_image)
 	int width = cv_ptr->image.size().width;
 	int height = cv_ptr->image.size().height;
 
-	// The code below is from: http://docs.opencv.org/2.4/doc/tutorials/imgproc/imgtrans/hough_lines/hough_lines.html
+
 	cv::Mat dst, cdst, wew, gray;
 
 	cv::cvtColor(cv_ptr->image, gray, CV_BGR2GRAY);
